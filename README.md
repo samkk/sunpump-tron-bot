@@ -2,15 +2,18 @@
 
 ![TRANCHESBOT-BANNER](https://github.com/user-attachments/assets/0f4e8f1a-e4f3-46b4-8259-ab89dc2fc8ed)
 
-Your ultimate tool for identifying and trading high-potential tokens on the TRON blockchain! 🎯 Easy to use, highly configurable, and loaded with powerful features to elevate your trading game. 🚀
+Your ultimate tool for identifying and trading high-potential tokens on the TRON blockchain! 🎯 Easy to use, highly configurable, and loaded with powerful features to elevate your trading game.
 
 ## ✨ Features
 
 - 🔔 **Liquidity Monitoring**: Keep a close eye on newly created liquidity pairs on SunSwap and get notified instantly.
 - ⚡ **Automated Token Trading**: Execute buy and sell orders seamlessly as soon as liquidity is detected.
 - 📊 **Advanced Analytics**: Analyze token data, including liquidity, price trends, and volume, to make informed decisions.
+- 🧰 **Rug Check**: Automatically perform a rug check on tokens to ensure they are safe to trade before executing any transactions.
 - 💬 **Telegram Bot Integration**: Manage and monitor your bot in real time via a sleek Telegram interface.
 - 🔒 **Secure MongoDB Storage**: Your data is stored securely and reliably using MongoDB.
+- 🧪 **Transaction Simulation**: Simulate token transactions to test the process before making real purchases.
+- 🏷️ **Token Selection**: Automatically select tokens with high potential, including checking their liquidity and other factors before placing any orders.
 
 ## 🖼️ Screenshots
 ![image](https://github.com/user-attachments/assets/0a13ef16-9350-4a41-add2-4bc596ff7603)
