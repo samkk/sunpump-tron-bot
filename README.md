@@ -1,5 +1,8 @@
-# Sunpump Tron Sniper bot
-This bot is your ultimate tool for identifying and trading tokens with the highest potential on the TRON blockchain. It's user-friendly, highly configurable, and packed with essential features to supercharge your trading experience! 🚀
+# 🌟 SunPump TRON Sniper Bot
+
+![TRANCHESBOT-BANNER](https://github.com/user-attachments/assets/0f4e8f1a-e4f3-46b4-8259-ab89dc2fc8ed)
+
+Your ultimate tool for identifying and trading high-potential tokens on the TRON blockchain! 🎯 Easy to use, highly configurable, and loaded with powerful features to elevate your trading game. 🚀
 
 ## ✨ Features
 
@@ -11,55 +14,52 @@ This bot is your ultimate tool for identifying and trading tokens with the highe
 
 ## Getting Started
 
-### Prerequisites
+### 🛠️ Prerequisites
 
-Make sure you have the following installed on your machine:
+Ensure your system is set up with the following:
 
-- Node.js (v16 or higher)
-- npm or yarn
+- ✅ **Node.js** (v16 or higher)
+- ✅ **npm or yarn**
 
-### Installation
+### 📥 Installation
 
-1. Clone the repository:
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/Novacode-ux/sunpump-tron-sniper-bot
+   cd sunpump-tron-sniper-bot
+   ```
 
-```bash
-git clone https://github.com/Novacode-ux/sunpump-tron-sniper-bot
-cd sunpump-tron-sniper-bot
-```
-
-2. Install the dependencies:
-
+2. **Install Dependencies**:
    ```bash
    npm install
    # or
    yarn install
    ```
 
-3. Ensure your MongoDB server is running. You can start it with the following command:
-
+3. **Start MongoDB**:
+   Ensure your MongoDB server is running. You can launch it using:
    ```bash
    mongod
    ```
 
-4. Open the `.env` file in the root directory of your project and modify it with your specific configuration.
+4. **Configure the Bot**:
+   Open the `.env` file in the project’s root directory and update it with your custom settings (e.g., Telegram API token, MongoDB URI, TRON wallet details).
 
 5. Start the bot:
-
    ```bash
    npm start
    # or
    yarn start
    ```
 
-The bot will now start and connect to Telegram, MongoDB, and the TRON network.
+🎉 That’s it! Your bot is now connected to Telegram, MongoDB, and the TRON network.
 
-### Available Commands
-
-- `/start`: Initializes the bot and provides a welcome message.
-- `/wallets`: Displays all wallets associated with your account.
-- `/positions`: Shows your current token positions.
-- `/pendingsnipes`: Lists all your pending sniping operations.
-
+### 💡 Available Commands
+- 🟢 `/start`: Kick things off with a welcome message and initialize the bot.
+- 👜 `/wallets`: Display all wallets associated with your account.
+- 📈 `/positions`: View your current token positions and performance.
+- 🕒 `/pendingsnipes`: Check the status of all your pending sniping operations.
+  
 ### License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
