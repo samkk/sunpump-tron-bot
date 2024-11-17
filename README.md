@@ -1,13 +1,13 @@
-# TRON Sniper
+# Sunpump Tron Sniper bot
+This bot is your ultimate tool for identifying and trading tokens with the highest potential on the TRON blockchain. It's user-friendly, highly configurable, and packed with essential features to supercharge your trading experience! 🚀
 
-This bot is designed to help you snipe and trade tokens on the TRON blockchain. It's highly configurable and easy to set up.
+## ✨ Features
 
-## Features
-
-- **Automated Token Sniping**: Monitor specific token contracts and automatically execute trades as soon as a liquidity pair is established on SunSwap.
-- **Effortless Trading**: Simplify buying and selling tokens on the TRON network with automated trade execution.
-- **Telegram Integration**: Control and monitor the bot directly from your Telegram account with an intuitive interface.
-- **Secure Data Storage with MongoDB**: Store user data securely using MongoDB, ensuring privacy and reliability.
+- 🔔 **Liquidity Monitoring**: Keep a close eye on newly created liquidity pairs on SunSwap and get notified instantly.
+- ⚡ **Automated Token Trading**: Execute buy and sell orders seamlessly as soon as liquidity is detected.
+- 📊 **Advanced Analytics**: Analyze token data, including liquidity, price trends, and volume, to make informed decisions.
+- 💬 **Telegram Bot Integration**: Manage and monitor your bot in real time via a sleek Telegram interface.
+- 🔒 **Secure MongoDB Storage**: Your data is stored securely and reliably using MongoDB.
 
 ## Getting Started
 
@@ -17,16 +17,15 @@ Make sure you have the following installed on your machine:
 
 - Node.js (v16 or higher)
 - npm or yarn
-- [MongoDB](https://www.mongodb.com/docs/manual/administration/install-community/)
 
 ### Installation
 
 1. Clone the repository:
 
-   ```bash
-   git clone https://github.com/0xTan1319/Tron-Sniper-Bot.git
-   cd tron-sniper
-   ```
+```bash
+git clone https://github.com/Novacode-ux/sunpump-tron-sniper-bot
+cd sunpump-tron-sniper-bot
+```
 
 2. Install the dependencies:
 
