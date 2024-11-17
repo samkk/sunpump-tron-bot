@@ -12,13 +12,12 @@ Your ultimate tool for identifying and trading high-potential tokens on the TRON
 - 💬 **Telegram Bot Integration**: Manage and monitor your bot in real time via a sleek Telegram interface.
 - 🔒 **Secure MongoDB Storage**: Your data is stored securely and reliably using MongoDB.
 
-## Getting Started
+## 🛠️ Prerequisites
+Ensure your system is set up with the following:
+- **Node.js** (v16 or higher)
+- **npm or yarn**
 
-### 🛠️ Prerequisites
-   Ensure your system is set up with the following:
-   
-   - **Node.js** (v16 or higher)
-   - **npm or yarn**
+## Getting Started
 
 ### 📥 Installation
 
