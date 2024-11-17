@@ -15,11 +15,10 @@ Your ultimate tool for identifying and trading high-potential tokens on the TRON
 ## Getting Started
 
 ### 🛠️ Prerequisites
-
-Ensure your system is set up with the following:
-
-- **Node.js** (v16 or higher)
-- **npm or yarn**
+   Ensure your system is set up with the following:
+   
+   - **Node.js** (v16 or higher)
+   - **npm or yarn**
 
 ### 📥 Installation
 
