@@ -68,7 +68,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Contributions
 
 Contributions are welcome! If you have ideas for improvements or new features, feel free to fork the repository and submit a pull request.
-
-### Contact
-
-If you have a question, ask here [Telegram: @shiny0103](https://t.me/shiny0103)
