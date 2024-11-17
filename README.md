@@ -18,8 +18,8 @@ Your ultimate tool for identifying and trading high-potential tokens on the TRON
 
 Ensure your system is set up with the following:
 
-- ✅ **Node.js** (v16 or higher)
-- ✅ **npm or yarn**
+- **Node.js** (v16 or higher)
+- **npm or yarn**
 
 ### 📥 Installation
 
@@ -54,16 +54,14 @@ Ensure your system is set up with the following:
 
 🎉 That’s it! Your bot is now connected to Telegram, MongoDB, and the TRON network.
 
-### 💡 Available Commands
+### Available Commands
 - 🟢 `/start`: Kick things off with a welcome message and initialize the bot.
 - 👜 `/wallets`: Display all wallets associated with your account.
 - 📈 `/positions`: View your current token positions and performance.
 - 🕒 `/pendingsnipes`: Check the status of all your pending sniping operations.
   
-### License
+## 📜 License
+This project is licensed under the MIT License. For details, check the [LICENSE](LICENSE) file.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-### Contributions
-
+## ☕ Contributions
 Contributions are welcome! If you have ideas for improvements or new features, feel free to fork the repository and submit a pull request.
