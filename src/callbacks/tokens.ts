@@ -989,6 +989,102 @@ export async function mySnipesCallback(
   }
 }
 
+/**
+ * 使用私钥进行代币购买，自动从私钥获取钱包地址
+ * @param tokenAddress 要购买的代币地址
+ * @param amount 要消费的TRX数量
+ * @param slippage 允许的滑点百分比
+ * @param privateKey 钱包私钥
+ * @returns 成功返回交易ID，失败返回错误信息
+ */
+export async function ownerBuyTokenCallback(
+  tokenAddress: string,
+  amount: number,
+  slippage: number,
+  privateKey: string
+): Promise<{ success: boolean; txID?: string; error?: string }> {
+  try {
+    // 检查参数有效性
+    if (!tokenAddress || !amount || !slippage || !privateKey) {
+      return {
+        success: false,
+        error: "参数不完整，请提供所有必需的参数",
+      };
+    }
+    // 从私钥获取钱包地址
+    const walletAddress = SniperUtils.importAccount(privateKey);
+    if (!walletAddress) {
+      return {
+        success: false,
+        error: "无法从私钥获取钱包地址，请检查私钥是否有效",
+      };
+    }
+    // 获取钱包TRX余额
+    const balance = await SniperUtils.getBalance(walletAddress);
+    if (!balance) {
+      return {
+        success: false,
+        error: "无法获取钱包余额",
+      };
+    }
+
+    // 转换为可读格式
+    const balanceTRX = new BigNumber(balance)
+      .div(new BigNumber(10).pow(WTRX_DECIMALS))
+      .toNumber();
+    // 检查余额是否足够
+    if (balanceTRX < amount) {
+      return {
+        success: false,
+        error:
+          "余额不足，当前余额: " +
+          balanceTRX +
+          " TRX，需要: " +
+          amount +
+          " TRX",
+      };
+    }
+    // 获取交易对地址
+    const pairAddress = await SniperUtils.getPairAddress(tokenAddress);
+    if (!pairAddress) {
+      return {
+        success: false,
+        error: "找不到该代币的交易对，可能尚未在DEX上创建流动性",
+      };
+    }
+    // 执行购买交易
+    const txID = await SniperUtils.buyToken(
+      tokenAddress,
+      pairAddress,
+      amount,
+      slippage,
+      walletAddress,
+      privateKey
+    );
+
+    if (!txID) {
+      return {
+        success: false,
+        error: "交易失败，可能是网络问题或交易被拒绝",
+      };
+    }
+
+    // 交易成功，返回交易ID
+    return {
+      success: true,
+      txID,
+    };
+  } catch (error) {
+    // 捕获并处理所有可能的错误
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`${errorLOG} ${error}`);
+    return {
+      success: false,
+      error: `购买代币时发生错误: ${errorMessage}`,
+    };
+  }
+}
+
 /* ------------------------------ */
 /*            SELL PART           */
 /* ------------------------------ */
@@ -1860,6 +1956,375 @@ export async function sellCustomTokenCallback(
     bot.sendMessage(chatId, "An error occurred while selling the token.", {
       reply_markup: {
         inline_keyboard: [[{ text: "❌ Close", callback_data: "close" }]],
+      },
+    });
+  }
+}
+
+/**
+ * 代币到代币的交换回调
+ * 允许用户直接将一种代币交换为另一种代币
+ * @param user 用户对象
+ * @param bot Telegram 机器人实例
+ * @param chatId 聊天ID
+ * @param fromTokenAddress 源代币地址
+ * @param toTokenAddress 目标代币地址
+ * @param slippage 滑点百分比
+ */
+export async function swapTokensForTokensCallback(
+  user: User,
+  bot: TelegramBot,
+  chatId: number,
+  fromTokenAddress: string,
+  toTokenAddress: string,
+  slippage: number
+) {
+  try {
+    const wallets = user.wallets;
+
+    if (wallets.length === 0) {
+      bot.sendMessage(chatId, "您还没有添加钱包。", {
+        reply_markup: {
+          inline_keyboard: [[{ text: "❌ 关闭", callback_data: "close" }]],
+        },
+      });
+      return;
+    }
+
+    // 获取源代币的信息
+    const fromTokenContract = await SniperUtils.getContractInstance(
+      TRC20_ABI,
+      fromTokenAddress
+    );
+
+    if (!fromTokenContract) {
+      bot.sendMessage(chatId, "源代币地址无效。", {
+        reply_markup: {
+          inline_keyboard: [[{ text: "❌ 关闭", callback_data: "close" }]],
+        },
+      });
+      return;
+    }
+
+    const fromTokenName = await fromTokenContract.name().call();
+    const fromTokenSymbol = await fromTokenContract.symbol().call();
+    const fromTokenDecimals = await fromTokenContract.decimals().call();
+
+    // 获取目标代币的信息
+    const toTokenContract = await SniperUtils.getContractInstance(
+      TRC20_ABI,
+      toTokenAddress
+    );
+
+    if (!toTokenContract) {
+      bot.sendMessage(chatId, "目标代币地址无效。", {
+        reply_markup: {
+          inline_keyboard: [[{ text: "❌ 关闭", callback_data: "close" }]],
+        },
+      });
+      return;
+    }
+
+    const toTokenName = await toTokenContract.name().call();
+    const toTokenSymbol = await toTokenContract.symbol().call();
+
+    // 获取用户每个钱包的代币余额
+    const balances = await Promise.all(
+      wallets.map(async (wallet) => {
+        const balance = await fromTokenContract
+          .balanceOf(wallet.address)
+          .call();
+
+        const balanceFormatted = new BigNumber(balance.toString())
+          .div(new BigNumber(10).pow(fromTokenDecimals))
+          .toFixed(4);
+
+        return `💰 *${balanceFormatted} ${fromTokenSymbol}* in \`${wallet.address}\`\n`;
+      })
+    );
+
+    const text = `选择要用于交换的钱包:
+    
+将 *${fromTokenName} (${fromTokenSymbol})* 交换为 *${toTokenName} (${toTokenSymbol})*
+滑点设置为: ${slippage}%
+
+${balances.join("\n")}`;
+
+    bot
+      .sendMessage(chatId, text, {
+        reply_markup: {
+          inline_keyboard: wallets.map((wallet, index) => [
+            {
+              text: wallet.address,
+              callback_data: `selectswapwallet_${index}_${fromTokenAddress}_${toTokenAddress}_${slippage}`,
+            },
+          ]),
+        },
+        parse_mode: "Markdown",
+      })
+      .then((msg) => {
+        setTimeout(() => {
+          bot.deleteMessage(chatId, msg.message_id);
+        }, 60000);
+      });
+  } catch (error) {
+    console.error(`${errorLOG} ${error}`);
+    bot.sendMessage(chatId, "交换代币时发生错误。", {
+      reply_markup: {
+        inline_keyboard: [[{ text: "❌ 关闭", callback_data: "close" }]],
+      },
+    });
+  }
+}
+
+/**
+ * 选择钱包后输入交换金额
+ */
+export async function selectSwapWalletCallback(
+  user: User,
+  bot: TelegramBot,
+  chatId: number,
+  walletIndex: number,
+  fromTokenAddress: string,
+  toTokenAddress: string,
+  slippage: number
+) {
+  try {
+    const wallet = user.wallets[walletIndex];
+
+    if (!wallet) {
+      bot.sendMessage(chatId, "钱包无效。", {
+        reply_markup: {
+          inline_keyboard: [[{ text: "❌ 关闭", callback_data: "close" }]],
+        },
+      });
+      return;
+    }
+
+    // 获取源代币信息
+    const fromTokenContract = await SniperUtils.getContractInstance(
+      TRC20_ABI,
+      fromTokenAddress
+    );
+
+    if (!fromTokenContract) {
+      bot.sendMessage(chatId, "源代币地址无效。", {
+        reply_markup: {
+          inline_keyboard: [[{ text: "❌ 关闭", callback_data: "close" }]],
+        },
+      });
+      return;
+    }
+
+    const fromTokenSymbol = await fromTokenContract.symbol().call();
+    const fromTokenDecimals = await fromTokenContract.decimals().call();
+
+    // 获取用户代币余额
+    const balance = await fromTokenContract.balanceOf(wallet.address).call();
+    const balanceFormatted = new BigNumber(balance.toString())
+      .div(new BigNumber(10).pow(fromTokenDecimals))
+      .toFixed(4);
+
+    const text = `请输入您想要交换的 ${fromTokenSymbol} 数量：
+
+您当前有 ${balanceFormatted} ${fromTokenSymbol}`;
+
+    bot
+      .sendMessage(chatId, text, {
+        reply_markup: {
+          force_reply: true,
+        },
+      })
+      .then((msg) => {
+        bot.onReplyToMessage(chatId, msg.message_id, async (reply) => {
+          const amount = reply.text;
+
+          if (!amount) {
+            bot.sendMessage(chatId, "金额无效。", {
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "❌ 关闭", callback_data: "close" }],
+                ],
+              },
+            });
+            return;
+          }
+
+          const parsedNumber = parseFloat(amount);
+
+          if (isNaN(parsedNumber)) {
+            bot.sendMessage(chatId, "金额无效。", {
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "❌ 关闭", callback_data: "close" }],
+                ],
+              },
+            });
+            return;
+          }
+
+          if (parsedNumber <= 0) {
+            bot.sendMessage(chatId, "金额必须大于0。", {
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "❌ 关闭", callback_data: "close" }],
+                ],
+              },
+            });
+            return;
+          }
+
+          // 检查余额是否足够
+          const userBalance = new BigNumber(balance.toString())
+            .div(new BigNumber(10).pow(fromTokenDecimals))
+            .toNumber();
+
+          if (userBalance < parsedNumber) {
+            bot.sendMessage(chatId, "余额不足。", {
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "❌ 关闭", callback_data: "close" }],
+                ],
+              },
+            });
+            return;
+          }
+
+          // 获取目标代币信息
+          const toTokenContract = await SniperUtils.getContractInstance(
+            TRC20_ABI,
+            toTokenAddress
+          );
+
+          if (!toTokenContract) {
+            bot.sendMessage(chatId, "目标代币地址无效。", {
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "❌ 关闭", callback_data: "close" }],
+                ],
+              },
+            });
+            return;
+          }
+
+          const toTokenName = await toTokenContract.name().call();
+          const toTokenSymbol = await toTokenContract.symbol().call();
+
+          bot.sendMessage(
+            chatId,
+            `您将使用 ${parsedNumber} ${fromTokenSymbol} 交换 ${toTokenName} (${toTokenSymbol})。确认?`,
+            {
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: "✅ 确认",
+                      callback_data: `confirmswap_${walletIndex}_${fromTokenAddress}_${toTokenAddress}_${parsedNumber}_${slippage}`,
+                    },
+                    {
+                      text: "❌ 取消",
+                      callback_data: `close`,
+                    },
+                  ],
+                ],
+              },
+            }
+          );
+        });
+      });
+  } catch (error) {
+    console.error(`${errorLOG} ${error}`);
+    bot.sendMessage(chatId, "选择钱包时发生错误。", {
+      reply_markup: {
+        inline_keyboard: [[{ text: "❌ 关闭", callback_data: "close" }]],
+      },
+    });
+  }
+}
+
+/**
+ * 确认交换并执行交易
+ */
+export async function confirmSwapCallback(
+  user: User,
+  bot: TelegramBot,
+  chatId: number,
+  walletIndex: number,
+  fromTokenAddress: string,
+  toTokenAddress: string,
+  amount: number,
+  slippage: number
+) {
+  try {
+    const wallet = user.wallets[walletIndex];
+
+    if (!wallet) {
+      bot.sendMessage(chatId, "钱包无效。", {
+        reply_markup: {
+          inline_keyboard: [[{ text: "❌ 关闭", callback_data: "close" }]],
+        },
+      });
+      return;
+    }
+
+    // 获取源代币信息
+    const fromTokenContract = await SniperUtils.getContractInstance(
+      TRC20_ABI,
+      fromTokenAddress
+    );
+
+    if (!fromTokenContract) {
+      bot.sendMessage(chatId, "源代币地址无效。", {
+        reply_markup: {
+          inline_keyboard: [[{ text: "❌ 关闭", callback_data: "close" }]],
+        },
+      });
+      return;
+    }
+
+    const fromTokenSymbol = await fromTokenContract.symbol().call();
+
+    const swappingMessage = await bot.sendMessage(
+      chatId,
+      `正在交换 ${amount} ${fromTokenSymbol}...`
+    );
+
+    // 执行交换
+    const txID = await SniperUtils.swapTokensForTokens(
+      fromTokenAddress,
+      toTokenAddress,
+      amount,
+      slippage,
+      wallet.address,
+      wallet.privateKey
+    );
+
+    if (!txID) {
+      bot.deleteMessage(chatId, swappingMessage.message_id);
+      bot.sendMessage(chatId, "交易失败，未找到交易ID。", {
+        reply_markup: {
+          inline_keyboard: [[{ text: "❌ 关闭", callback_data: "close" }]],
+        },
+      });
+      return;
+    }
+
+    bot.deleteMessage(chatId, swappingMessage.message_id);
+    bot.sendMessage(
+      chatId,
+      `交易已发送: [在 Tronscan 上查看](https://tronscan.org/#/transaction/${txID})`,
+      {
+        parse_mode: "Markdown",
+        reply_markup: {
+          inline_keyboard: [[{ text: "❌ 关闭", callback_data: "close" }]],
+        },
+      }
+    );
+  } catch (error) {
+    console.error(`${errorLOG} ${error}`);
+    bot.sendMessage(chatId, "确认交换时发生错误。", {
+      reply_markup: {
+        inline_keyboard: [[{ text: "❌ 关闭", callback_data: "close" }]],
       },
     });
   }

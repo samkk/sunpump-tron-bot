@@ -2,7 +2,10 @@
   "name": "tron-sniper",
   "version": "1.0.0",
   "scripts": {
-    "start": "tsx src/index.ts"
+    "start": "tsx src/index.ts",
+    "scan": "tsx src/blockchainScanner.ts",
+    "build": "mkdir -p dist logs && esbuild src/index.ts --bundle --platform=node --outfile=dist/bundle.js --minify --log-level=debug --external:fs --external:path --external:crypto --external:os --external:tls --external:net --external:http --external:https --external:events --external:util --external:stream --external:zlib",
+    "start:prod": "pm2 start ecosystem.config.js"
   },
   "author": "Novacode",
   "license": "MIT",
@@ -10,16 +13,18 @@
   "dependencies": {
     "@noble/secp256k1": "^2.1.0",
     "bignumber.js": "^9.1.2",
-    "arcademathjs": "latest",
     "colors": "^1.4.0",
     "dotenv": "^16.4.5",
     "ethers": "^6.13.2",
     "mongodb": "^6.8.0",
     "node-telegram-bot-api": "^0.66.0",
-    "tronweb": "^5.3.2"
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "tronweb": "^6.0.2"
   },
   "devDependencies": {
     "@types/node-telegram-bot-api": "^0.64.7",
+    "esbuild": "^0.20.2",
     "tsx": "^4.17.0"
   }
 }

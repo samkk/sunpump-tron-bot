@@ -5,6 +5,8 @@
 export const SUNSWAP_FACTORY_ADDRESS = "TKWJdrQkqHisa1X8HUdHEfREvTzw4pMAaY"; // https://www.sunswap.com/docs/sunswapV2-interfaces_en.pdf
 export const SUNSWAP_ROUTER_ADDRESS = "TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax"; // https://www.sunswap.com/docs/sunswapV2-interfaces_en.pdf
 export const WTRX_ADDRESS = "TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR"; // https://tronscan.org/#/contract/TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR
+export const SUNSWAP_NEW_TOKEN = "TTfvyrAz86hbZk5iDpKD78pqLGgi8C7AAw";
+
 export const WTRX_DECIMALS = 6;
 export const GENERIC_ERROR_MESSAGE =
   "An error occurred. Please try again later.";
