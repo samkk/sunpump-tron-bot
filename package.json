@@ -4,8 +4,9 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "scan": "tsx src/blockchainScanner.ts",
-    "build": "mkdir -p dist logs && esbuild src/index.ts --bundle --platform=node --outfile=dist/bundle.js --minify --log-level=debug --external:fs --external:path --external:crypto --external:os --external:tls --external:net --external:http --external:https --external:events --external:util --external:stream --external:zlib",
-    "start:prod": "pm2 start ecosystem.config.js"
+    "build": "node build.js",
+    "start:prod": "pm2 start ecosystem.config.js",
+    "start:block": "tsx src/block/index.ts"
   },
   "author": "Novacode",
   "license": "MIT",
@@ -16,6 +17,7 @@
     "colors": "^1.4.0",
     "dotenv": "^16.4.5",
     "ethers": "^6.13.2",
+    "ioredis": "^5.6.1",
     "mongodb": "^6.8.0",
     "node-telegram-bot-api": "^0.66.0",
     "pino": "^9.6.0",
@@ -24,7 +26,8 @@
   },
   "devDependencies": {
     "@types/node-telegram-bot-api": "^0.64.7",
-    "esbuild": "^0.20.2",
+    "esbuild": "^0.25.3",
+    "esbuild-plugin-pino": "^2.2.2",
     "tsx": "^4.17.0"
   }
 }

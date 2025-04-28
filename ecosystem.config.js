@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: "pump-bot",
-      script: "dist/bundle.js",
+      script: "dist/index.js",
       cwd: "./",
       args: "",
       interpreter: "",
@@ -23,6 +23,7 @@ module.exports = {
       restart_delay: 60 * 1000,
       env: {
         NODE_ENV: "production",
+        NODE_PATH: ".",
       },
     },
   ],

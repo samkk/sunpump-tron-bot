@@ -1,6 +1,7 @@
 import BigNumber from "bignumber.js";
 import TelegramBot from "node-telegram-bot-api";
 import { TRC20_ABI, WTRX_DECIMALS } from "../config";
+import { executeSunpumpSwap } from "../config/sunswap";
 import { formatElapsedTime, formatNumber } from "../utils/format";
 import { errorLOG } from "../utils/logs";
 import SniperUtils from "../utils/tronWeb";
@@ -1027,7 +1028,6 @@ export async function ownerBuyTokenCallback(
         error: "无法获取钱包余额",
       };
     }
-
     // 转换为可读格式
     const balanceTRX = new BigNumber(balance)
       .div(new BigNumber(10).pow(WTRX_DECIMALS))
@@ -1044,32 +1044,7 @@ export async function ownerBuyTokenCallback(
           " TRX",
       };
     }
-    // 获取交易对地址
-    const pairAddress = await SniperUtils.getPairAddress(tokenAddress);
-    if (!pairAddress) {
-      return {
-        success: false,
-        error: "找不到该代币的交易对，可能尚未在DEX上创建流动性",
-      };
-    }
-    // 执行购买交易
-    const txID = await SniperUtils.buyToken(
-      tokenAddress,
-      pairAddress,
-      amount,
-      slippage,
-      walletAddress,
-      privateKey
-    );
-
-    if (!txID) {
-      return {
-        success: false,
-        error: "交易失败，可能是网络问题或交易被拒绝",
-      };
-    }
-
-    // 交易成功，返回交易ID
+    const txID = await executeSunpumpSwap(tokenAddress, amount);
     return {
       success: true,
       txID,

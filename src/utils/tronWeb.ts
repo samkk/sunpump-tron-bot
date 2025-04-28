@@ -5,15 +5,38 @@ import {
   SUNSWAP_FACTORY_ABI,
   SUNSWAP_FACTORY_ADDRESS,
   SUNSWAP_PAIR_ABI,
-  SUNSWAP_ROUTER_ABI,
   SUNSWAP_ROUTER_ADDRESS,
   TRC20_ABI,
   WTRX_ADDRESS,
   WTRX_DECIMALS,
 } from "../config";
 import logger from "../log";
+import { SUNSWAP_ROUTER_ABI } from "./../config";
 import ApiKeyManager from "./apiKeys";
 import { errorLOG } from "./logs";
+
+let tronWebInstance: TronWeb;
+try {
+  const envConfig = dotenv.config();
+  const env = envConfig.parsed;
+  // 检查必要的环境变量
+  if (!env?.TRON_FULL_HOST) {
+    throw new Error("环境变量TRON_FULL_HOST缺失");
+  }
+  const apiKey = ApiKeyManager.getRandomApiKey();
+  tronWebInstance = new TronWeb({
+    fullHost: env.TRON_FULL_HOST,
+    headers: { "TRON-PRO-API-KEY": apiKey },
+    privateKey: env.PRIVATE_KEY,
+  });
+  logger.info(`TronWeb已初始化，使用API Key: ${apiKey.substring(0, 4)}****`);
+} catch (error) {
+  console.error(`初始化TronWeb失败: ${error}`);
+  process.exit(1);
+}
+
+// 导出已初始化的TronWeb实例，便于其他模块直接使用
+export const Tronweb = tronWebInstance;
 
 /**
  * SniperUtils 类 - Tron 区块链上的代币狙击工具类
@@ -21,7 +44,7 @@ import { errorLOG } from "./logs";
  */
 class SniperUtils {
   // TronWeb 实例，使用单例模式
-  private static instance: TronWeb;
+  private static instance: TronWeb = tronWebInstance;
   // 缓存的 TRX 价格，减少 API 调用
   private static cachedTRXPrice: number | null = null;
   // 价格缓存的时间戳，用于判断缓存是否过期
@@ -30,6 +53,8 @@ class SniperUtils {
   private static lastRefreshTime: number = 0;
   // API Key刷新的最小间隔时间（毫秒）
   private static MIN_REFRESH_INTERVAL: number = 3000;
+  // 添加初始化标志 - 已经在外部初始化了
+  private static isInitialized: boolean = true;
 
   // 私有构造函数，防止直接实例化
   private constructor() {}
@@ -41,48 +66,38 @@ class SniperUtils {
   /**
    * 获取 TronWeb 实例
    * @returns TronWeb 实例
-   * @throws 如果实例未初始化，则抛出错误
    */
   static getInstance() {
-    if (!this.instance) {
-      throw new Error("TronWeb instance not initialized");
-    }
     return this.instance;
   }
 
   /**
-   * 初始化 TronWeb 连接
-   * 从 .env 文件加载配置并创建 TronWeb 实例
-   * @throws 如果环境变量缺失，则抛出错误
+   * 检查 TronWeb 是否已初始化
+   * @returns 是否已初始化
    */
-  static async initialize() {
-    try {
-      // 加载环境变量
-      const { parsed: env } = dotenv.config();
-      if (!env) {
-        throw new Error("No .env file found");
-      }
-      // 检查必要的环境变量是否存在
-      const requiredEnvVariables = ["TRON_FULL_HOST"];
-      for (const variable of requiredEnvVariables) {
-        if (!env[variable]) {
-          throw new Error(`${variable} is missing in .env file`);
-        }
-      }
-      // 获取随机 API KEY
-      const apiKey = ApiKeyManager.getRandomApiKey();
-      this.instance = new TronWeb({
-        fullHost: env.TRON_FULL_HOST,
-        headers: { "TRON-PRO-API-KEY": apiKey },
-        privateKey: env.PRIVATE_KEY,
-      });
-      logger.info(
-        `TronWeb 已初始化，使用 API Key: ${apiKey.substring(0, 4)}****`
-      );
-    } catch (error) {
-      console.error(`${errorLOG} ${error}`);
-      process.exit(1);
-    }
+  static isInitializedStatus() {
+    return this.isInitialized;
+  }
+
+  /**
+   * 设置 TronWeb 实例
+   * 用于手动设置实例，主要供内部或测试使用
+   * @param tronWebInstance TronWeb 实例
+   */
+  static setInstance(newTronWebInstance: TronWeb) {
+    this.instance = newTronWebInstance;
+    this.isInitialized = true;
+  }
+
+  /**
+   * 初始化方法（保持兼容性）
+   * 由于实例已在模块加载时初始化，此方法只是为了兼容原有代码
+   * @returns Promise，始终立即解析
+   */
+  static async initialize(): Promise<void> {
+    // 由于实例已在模块加载时初始化，此方法只返回一个已解析的Promise
+    logger.info("TronWeb已在模块加载时初始化，无需再次初始化");
+    return Promise.resolve();
   }
 
   /**
@@ -285,8 +300,6 @@ class SniperUtils {
     }
   }
 
-  /**SUNSWAP_ROUTER_ABI */
-
   /**
    * 获取交易对详细信息
    * @param pairAddress 交易对地址
@@ -299,30 +312,22 @@ class SniperUtils {
         SUNSWAP_PAIR_ABI.entrys,
         pairAddress
       );
-
       if (!contract) throw new Error("No contract found");
-
       // 获取交易对的储备量
       const reserves = (await contract.getReserves().call()) as [
         bigint,
         bigint,
         number
       ];
-
       if (!reserves) throw new Error("No reserves found");
-
       // 获取交易对中的两个代币地址
       const token0 = await contract.token0().call();
       const token1 = await contract.token1().call();
-
       if (!token0 || !token1) throw new Error("No tokens found");
-
       // 判断 WTRX 是否为 token0，并相应地处理返回数据
       if (this.getAddressFromHex(token0) === WTRX_ADDRESS) {
         const tokenAddress = this.getAddressFromHex(token1);
-
         if (!tokenAddress) throw new Error("No token addresses found");
-
         const reserveWTRX = new BigNumber(reserves[0].toString());
         const reserveToken = new BigNumber(reserves[1].toString());
         const timestamp = reserves[2];
@@ -351,6 +356,247 @@ class SniperUtils {
       };
     } catch (error) {
       console.error(`${errorLOG} ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * 获取交易对详细信息 SUNSWAP_ROUTER_ABI
+   * @param pairAddress 交易对地址
+   * @returns 交易对信息，包括代币地址、代币储备量、WTRX 储备量和时间戳
+   */
+  static async getRouterInformations(pairAddress: string) {
+    try {
+      // 获取交易对合约实例
+      const contract = await this.getContractInstance(
+        SUNSWAP_ROUTER_ABI.entrys,
+        SUNSWAP_ROUTER_ADDRESS
+      );
+
+      if (!contract) throw new Error("SUNSWAP_ROUTER contract not found");
+      // 获取交易对中的两个代币地址
+      const token0 = await contract.token0().call();
+      const token1 = await contract.token1().call();
+      if (!token0 || !token1) throw new Error("No tokens found");
+      // 判断 WTRX 是否为 token0，并相应地处理返回数据
+      if (this.getAddressFromHex(token0) === WTRX_ADDRESS) {
+        const tokenAddress = this.getAddressFromHex(token1);
+      }
+
+      const tokenAddress = this.getAddressFromHex(token0);
+
+      if (!tokenAddress) throw new Error("No token addresses found");
+
+      return {
+        tokenAddress,
+      };
+    } catch (error) {
+      console.error(`${errorLOG} ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * 代币对代币的交换
+   * 直接使用 SUNSWAP_ROUTER_ABI 实现一个代币到另一个代币的交换
+   * @param fromTokenAddress 支出代币地址
+   * @param toTokenAddress 接收代币地址
+   * @param amountIn 支出代币的数量
+   * @param slippagePercentage 允许的滑点百分比
+   * @param walletAddress 钱包地址
+   * @param privateKey 私钥
+   * @returns 交易 ID，失败返回 null
+   */
+  static async swapTokensForTokens(
+    fromTokenAddress: string,
+    toTokenAddress: string,
+    amountIn: number,
+    slippagePercentage: number,
+    walletAddress: string,
+    privateKey: string
+  ) {
+    try {
+      // 检查参数
+      if (
+        !fromTokenAddress ||
+        !toTokenAddress ||
+        !amountIn ||
+        !slippagePercentage ||
+        !walletAddress ||
+        !privateKey
+      ) {
+        throw new Error("必须提供所有参数");
+      }
+      // 检查是否为同一代币
+      if (fromTokenAddress === toTokenAddress) {
+        throw new Error("无法交换相同的代币");
+      }
+      // 获取 fromToken 合约实例以获取代币精度
+      const fromTokenContract = await this.getContractInstance(
+        TRC20_ABI,
+        fromTokenAddress
+      );
+
+      if (!fromTokenContract) throw new Error("无法获取源代币合约");
+
+      // 获取代币精度
+      const decimals = await fromTokenContract.decimals().call();
+      if (!decimals) throw new Error("无法获取代币精度");
+
+      // 计算实际要发送的代币数量（考虑精度）
+      const amountToSend = new BigNumber(amountIn)
+        .times(new BigNumber(10).pow(decimals))
+        .integerValue(BigNumber.ROUND_DOWN);
+
+      // 检查用户代币余额
+      const balance = await fromTokenContract.balanceOf(walletAddress).call();
+      if (!balance) throw new Error("无法获取代币余额");
+
+      const userBalance = new BigNumber(balance.toString());
+      if (userBalance.lt(amountToSend)) {
+        throw new Error("代币余额不足");
+      }
+
+      // 获取交易路径中的交易对地址，先检查是否有直接的交易对
+      let pairAddress = await this.getPairAddress(fromTokenAddress);
+      if (!pairAddress) {
+        throw new Error(`找不到 ${fromTokenAddress} 与 WTRX 的交易对`);
+      }
+
+      let toPairAddress = await this.getPairAddress(toTokenAddress);
+      if (!toPairAddress) {
+        throw new Error(`找不到 ${toTokenAddress} 与 WTRX 的交易对`);
+      }
+
+      // 获取 Router 合约实例
+      const routerContract = await this.getContractInstance(
+        SUNSWAP_ROUTER_ABI.entrys,
+        SUNSWAP_ROUTER_ADDRESS
+      );
+
+      if (!routerContract) throw new Error("无法获取路由合约");
+
+      // 设置交易路径：fromToken -> WTRX -> toToken
+      const path = [fromTokenAddress, WTRX_ADDRESS, toTokenAddress];
+
+      // 将地址转换为十六进制
+      const fromTokenAddressHex = this.getAddressInHex(fromTokenAddress, true);
+      const wtrxAddressHex = this.getAddressInHex(WTRX_ADDRESS, true);
+      const toTokenAddressHex = this.getAddressInHex(toTokenAddress, true);
+      const routerAddressHex = this.getAddressInHex(
+        SUNSWAP_ROUTER_ADDRESS,
+        false
+      );
+      const walletAddressHex = this.getAddressInHex(walletAddress, false);
+
+      if (!fromTokenAddressHex || !wtrxAddressHex || !toTokenAddressHex) {
+        throw new Error("地址转换失败");
+      }
+
+      // 获取预期输出金额
+      const amounts = await routerContract
+        .getAmountsOut(amountToSend.toString(), [
+          fromTokenAddressHex,
+          wtrxAddressHex,
+          toTokenAddressHex,
+        ])
+        .call();
+
+      if (!amounts || amounts.length !== 3) {
+        throw new Error("获取预期输出金额失败");
+      }
+
+      // 计算最小输出金额（考虑滑点）
+      const expectedAmountOut = new BigNumber(amounts[2].toString());
+      const slippageFactor = new BigNumber(100 - slippagePercentage).div(100);
+      const amountOutMin = expectedAmountOut
+        .times(slippageFactor)
+        .integerValue(BigNumber.ROUND_DOWN)
+        .toString();
+
+      // 设置交易截止时间（通常设置为当前时间 + 一定分钟数）
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20分钟后过期
+
+      // 检查授权额度
+      const allowance = await this.getAllowance(
+        fromTokenAddress,
+        walletAddress,
+        SUNSWAP_ROUTER_ADDRESS
+      );
+
+      // 如果授权额度不足，先进行授权
+      if (!allowance || allowance.lt(amountToSend)) {
+        const approve = await this.approveToken(
+          fromTokenAddress,
+          walletAddress,
+          SUNSWAP_ROUTER_ADDRESS,
+          privateKey
+        );
+
+        if (!approve) throw new Error("代币授权失败");
+
+        // 等待授权交易确认
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+      }
+
+      // 设置调用合约的参数
+      const parameter = [
+        { type: "uint256", value: amountToSend.toString() },
+        { type: "uint256", value: amountOutMin },
+        {
+          type: "address[]",
+          value: [fromTokenAddressHex, wtrxAddressHex, toTokenAddressHex],
+        },
+        { type: "address", value: walletAddress },
+        { type: "uint256", value: deadline },
+      ];
+
+      // 创建交易
+      let transaction;
+      try {
+        const result =
+          await this.getInstance().transactionBuilder.triggerSmartContract(
+            routerAddressHex,
+            "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+            {},
+            parameter,
+            walletAddressHex
+          );
+        transaction = result.transaction;
+      } catch (error) {
+        throw error;
+      }
+
+      if (!transaction) throw new Error("创建交易失败");
+
+      // 使用私钥签名交易
+      const signedTransaction = await this.getInstance().trx.sign(
+        transaction,
+        privateKey
+      );
+
+      if (!signedTransaction) throw new Error("签名交易失败");
+
+      // 广播交易到网络
+      let broadcast;
+      try {
+        broadcast = await this.getInstance().trx.sendRawTransaction(
+          signedTransaction
+        );
+      } catch (error) {
+        throw error;
+      }
+      if (!broadcast) throw new Error("广播交易失败");
+      logger.info(
+        `用户交换了 ${amountIn} ${fromTokenAddress} 到 ${toTokenAddress}`,
+        broadcast
+      );
+      const result = broadcast.result;
+      const tx = broadcast.transaction;
+      if (!result || !tx) throw new Error("交易执行失败");
+      return tx.txID;
+    } catch (error) {
+      logger.error(`${errorLOG} ${error}`);
       return null;
     }
   }
@@ -1108,213 +1354,6 @@ class SniperUtils {
    */
   static getDeadline() {
     return Math.floor(Date.now() / 1000) + 60 * 2;
-  }
-
-  /**
-   * 代币对代币的交换
-   * 直接使用 SUNSWAP_ROUTER_ABI 实现一个代币到另一个代币的交换
-   * @param fromTokenAddress 支出代币地址
-   * @param toTokenAddress 接收代币地址
-   * @param amountIn 支出代币的数量
-   * @param slippagePercentage 允许的滑点百分比
-   * @param walletAddress 钱包地址
-   * @param privateKey 私钥
-   * @returns 交易 ID，失败返回 null
-   */
-  static async swapTokensForTokens(
-    fromTokenAddress: string,
-    toTokenAddress: string,
-    amountIn: number,
-    slippagePercentage: number,
-    walletAddress: string,
-    privateKey: string
-  ) {
-    try {
-      // 检查参数
-      if (
-        !fromTokenAddress ||
-        !toTokenAddress ||
-        !amountIn ||
-        !slippagePercentage ||
-        !walletAddress ||
-        !privateKey
-      ) {
-        throw new Error("必须提供所有参数");
-      }
-
-      // 检查是否为同一代币
-      if (fromTokenAddress === toTokenAddress) {
-        throw new Error("无法交换相同的代币");
-      }
-
-      // 获取 fromToken 合约实例以获取代币精度
-      const fromTokenContract = await this.getContractInstance(
-        TRC20_ABI,
-        fromTokenAddress
-      );
-
-      if (!fromTokenContract) throw new Error("无法获取源代币合约");
-
-      // 获取代币精度
-      const decimals = await fromTokenContract.decimals().call();
-      if (!decimals) throw new Error("无法获取代币精度");
-
-      // 计算实际要发送的代币数量（考虑精度）
-      const amountToSend = new BigNumber(amountIn)
-        .times(new BigNumber(10).pow(decimals))
-        .integerValue(BigNumber.ROUND_DOWN);
-
-      // 检查用户代币余额
-      const balance = await fromTokenContract.balanceOf(walletAddress).call();
-      if (!balance) throw new Error("无法获取代币余额");
-
-      const userBalance = new BigNumber(balance.toString());
-      if (userBalance.lt(amountToSend)) {
-        throw new Error("代币余额不足");
-      }
-
-      // 获取交易路径中的交易对地址，先检查是否有直接的交易对
-      let pairAddress = await this.getPairAddress(fromTokenAddress);
-      if (!pairAddress) {
-        throw new Error(`找不到 ${fromTokenAddress} 与 WTRX 的交易对`);
-      }
-
-      let toPairAddress = await this.getPairAddress(toTokenAddress);
-      if (!toPairAddress) {
-        throw new Error(`找不到 ${toTokenAddress} 与 WTRX 的交易对`);
-      }
-
-      // 获取 Router 合约实例
-      const routerContract = await this.getContractInstance(
-        SUNSWAP_ROUTER_ABI.entrys,
-        SUNSWAP_ROUTER_ADDRESS
-      );
-
-      if (!routerContract) throw new Error("无法获取路由合约");
-
-      // 设置交易路径：fromToken -> WTRX -> toToken
-      const path = [fromTokenAddress, WTRX_ADDRESS, toTokenAddress];
-
-      // 将地址转换为十六进制
-      const fromTokenAddressHex = this.getAddressInHex(fromTokenAddress, true);
-      const wtrxAddressHex = this.getAddressInHex(WTRX_ADDRESS, true);
-      const toTokenAddressHex = this.getAddressInHex(toTokenAddress, true);
-      const routerAddressHex = this.getAddressInHex(
-        SUNSWAP_ROUTER_ADDRESS,
-        false
-      );
-      const walletAddressHex = this.getAddressInHex(walletAddress, false);
-
-      if (!fromTokenAddressHex || !wtrxAddressHex || !toTokenAddressHex) {
-        throw new Error("地址转换失败");
-      }
-
-      // 获取预期输出金额
-      const amounts = await routerContract
-        .getAmountsOut(amountToSend.toString(), [
-          fromTokenAddressHex,
-          wtrxAddressHex,
-          toTokenAddressHex,
-        ])
-        .call();
-
-      if (!amounts || amounts.length !== 3) {
-        throw new Error("获取预期输出金额失败");
-      }
-
-      // 计算最小输出金额（考虑滑点）
-      const expectedAmountOut = new BigNumber(amounts[2].toString());
-      const slippageFactor = new BigNumber(100 - slippagePercentage).div(100);
-      const amountOutMin = expectedAmountOut
-        .times(slippageFactor)
-        .integerValue(BigNumber.ROUND_DOWN)
-        .toString();
-
-      // 设置交易截止时间（通常设置为当前时间 + 一定分钟数）
-      const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20分钟后过期
-
-      // 检查授权额度
-      const allowance = await this.getAllowance(
-        fromTokenAddress,
-        walletAddress,
-        SUNSWAP_ROUTER_ADDRESS
-      );
-
-      // 如果授权额度不足，先进行授权
-      if (!allowance || allowance.lt(amountToSend)) {
-        const approve = await this.approveToken(
-          fromTokenAddress,
-          walletAddress,
-          SUNSWAP_ROUTER_ADDRESS,
-          privateKey
-        );
-
-        if (!approve) throw new Error("代币授权失败");
-
-        // 等待授权交易确认
-        await new Promise((resolve) => setTimeout(resolve, 10000));
-      }
-
-      // 设置调用合约的参数
-      const parameter = [
-        { type: "uint256", value: amountToSend.toString() },
-        { type: "uint256", value: amountOutMin },
-        {
-          type: "address[]",
-          value: [fromTokenAddressHex, wtrxAddressHex, toTokenAddressHex],
-        },
-        { type: "address", value: walletAddress },
-        { type: "uint256", value: deadline },
-      ];
-
-      // 创建交易
-      let transaction;
-      try {
-        const result =
-          await this.getInstance().transactionBuilder.triggerSmartContract(
-            routerAddressHex,
-            "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
-            {},
-            parameter,
-            walletAddressHex
-          );
-        transaction = result.transaction;
-      } catch (error) {
-        throw error;
-      }
-
-      if (!transaction) throw new Error("创建交易失败");
-
-      // 使用私钥签名交易
-      const signedTransaction = await this.getInstance().trx.sign(
-        transaction,
-        privateKey
-      );
-
-      if (!signedTransaction) throw new Error("签名交易失败");
-
-      // 广播交易到网络
-      let broadcast;
-      try {
-        broadcast = await this.getInstance().trx.sendRawTransaction(
-          signedTransaction
-        );
-      } catch (error) {
-        throw error;
-      }
-      if (!broadcast) throw new Error("广播交易失败");
-      logger.info(
-        `用户交换了 ${amountIn} ${fromTokenAddress} 到 ${toTokenAddress}`,
-        broadcast
-      );
-      const result = broadcast.result;
-      const tx = broadcast.transaction;
-      if (!result || !tx) throw new Error("交易执行失败");
-      return tx.txID;
-    } catch (error) {
-      logger.error(`${errorLOG} ${error}`);
-      return null;
-    }
   }
 
   /**

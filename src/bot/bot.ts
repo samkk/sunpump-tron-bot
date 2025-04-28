@@ -12,7 +12,7 @@ if (!token) {
 // 创建机器人实例
 const bot = new TelegramBot(token, { polling: false });
 // 存储订阅新代币通知的用户ID列表
-let newTokenSubscribers: number[] = [2586678867, 574111868];
+let newTokenSubscribers: number[] = [-1002586678867];
 
 /**
  * 发送新代币通知给所有订阅用户
@@ -367,11 +367,87 @@ TRON Sniper Bot 是一个专门为 TRON 区块链设计的交易和狙击工具�
                   callback_data: `amount_500_${tokenAddress}`,
                 },
               ],
-              [{ text: "❌ 取消", callback_data: "close" }],
+              [
+                {
+                  text: "⌨️ 自定义金额",
+                  callback_data: `custom_amount_${tokenAddress}`,
+                },
+                { text: "❌ 取消", callback_data: "close" },
+              ],
             ],
           },
         }
       );
+      return;
+    }
+
+    // 处理自定义金额输入
+    if (data.startsWith("custom_amount_")) {
+      const tokenAddress = data.replace("custom_amount_", "");
+      bot.answerCallbackQuery(callbackQuery.id, {
+        text: "请输入自定义金额...",
+      });
+
+      bot
+        .sendMessage(
+          chatId,
+          "请输入您想购买的 TRX 金额（仅数字，例如：150）:",
+          {
+            reply_markup: {
+              force_reply: true,
+            },
+          }
+        )
+        .then((sentMessage) => {
+          // 设置一个监听器来捕获用户的回复
+          bot.onReplyToMessage(
+            chatId,
+            sentMessage.message_id,
+            (replyMessage) => {
+              const amount = replyMessage.text;
+
+              // 验证输入是否为有效数字
+              if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+                bot.sendMessage(chatId, "❌ 请输入有效的正数金额。", {
+                  reply_markup: {
+                    inline_keyboard: [
+                      [
+                        {
+                          text: "🔄 重试",
+                          callback_data: `custom_amount_${tokenAddress}`,
+                        },
+                      ],
+                      [{ text: "❌ 取消", callback_data: "close" }],
+                    ],
+                  },
+                });
+                return;
+              }
+
+              const numAmount = Number(amount);
+
+              // 发送确认消息
+              bot.sendMessage(
+                chatId,
+                `您确定要使用 ${numAmount} TRX 购买此代币吗？`,
+                {
+                  reply_markup: {
+                    inline_keyboard: [
+                      [
+                        {
+                          text: "✅ 确认",
+                          callback_data: `amount_${numAmount}_${tokenAddress}`,
+                        },
+                        { text: "❌ 取消", callback_data: "close" },
+                      ],
+                    ],
+                  },
+                }
+              );
+            }
+          );
+        });
+
       return;
     }
 
@@ -552,260 +628,6 @@ _请稍等，交易正在处理中..._
         }
       );
       return;
-    }
-
-    // 处理代币对代币交换
-    if (data.startsWith("tokenswap_")) {
-      // 获取用户信息
-      const { getUserByID } = require("../utils/database");
-      getUserByID(chatId)
-        .then((user: any) => {
-          if (!user) {
-            bot.sendMessage(chatId, "用户未找到或未登录。");
-            return;
-          }
-
-          // 弹出代币选择提示
-          bot
-            .sendMessage(
-              chatId,
-              `
-💱 *代币交换*
-
-请输入您要交换的源代币地址:
-            `,
-              {
-                parse_mode: "Markdown",
-                reply_markup: {
-                  force_reply: true,
-                },
-              }
-            )
-            .then((msg) => {
-              // 获取用户回复的源代币地址
-              bot.onReplyToMessage(chatId, msg.message_id, (fromTokenMsg) => {
-                const fromTokenAddress = fromTokenMsg.text;
-
-                if (!fromTokenAddress) {
-                  bot.sendMessage(chatId, "无效的源代币地址。", {
-                    reply_markup: {
-                      inline_keyboard: [
-                        [{ text: "❌ 关闭", callback_data: "close" }],
-                      ],
-                    },
-                  });
-                  return;
-                }
-
-                // 输入目标代币地址
-                bot
-                  .sendMessage(
-                    chatId,
-                    `
-💱 *代币交换*
-
-请输入您要获得的目标代币地址:
-                  `,
-                    {
-                      parse_mode: "Markdown",
-                      reply_markup: {
-                        force_reply: true,
-                      },
-                    }
-                  )
-                  .then((msg) => {
-                    // 获取用户回复的目标代币地址
-                    bot.onReplyToMessage(
-                      chatId,
-                      msg.message_id,
-                      (toTokenMsg) => {
-                        const toTokenAddress = toTokenMsg.text;
-
-                        if (!toTokenAddress) {
-                          bot.sendMessage(chatId, "无效的目标代币地址。", {
-                            reply_markup: {
-                              inline_keyboard: [
-                                [{ text: "❌ 关闭", callback_data: "close" }],
-                              ],
-                            },
-                          });
-                          return;
-                        }
-
-                        // 设置滑点
-                        bot
-                          .sendMessage(
-                            chatId,
-                            `
-💱 *代币交换*
-
-请输入滑点百分比 (例如: 5 表示 5%):
-                          `,
-                            {
-                              parse_mode: "Markdown",
-                              reply_markup: {
-                                force_reply: true,
-                              },
-                            }
-                          )
-                          .then((msg) => {
-                            // 获取用户回复的滑点百分比
-                            bot.onReplyToMessage(
-                              chatId,
-                              msg.message_id,
-                              (slippageMsg) => {
-                                const slippage = parseInt(
-                                  slippageMsg.text || "0"
-                                );
-
-                                if (
-                                  isNaN(slippage) ||
-                                  slippage < 0 ||
-                                  slippage > 100
-                                ) {
-                                  bot.sendMessage(
-                                    chatId,
-                                    "无效的滑点百分比，请输入0-100之间的数字。",
-                                    {
-                                      reply_markup: {
-                                        inline_keyboard: [
-                                          [
-                                            {
-                                              text: "❌ 关闭",
-                                              callback_data: "close",
-                                            },
-                                          ],
-                                        ],
-                                      },
-                                    }
-                                  );
-                                  return;
-                                }
-
-                                // 加载代币交换回调函数
-                                const {
-                                  swapTokensForTokensCallback,
-                                } = require("../callbacks/tokens");
-
-                                // 调用函数执行交换
-                                swapTokensForTokensCallback(
-                                  user,
-                                  bot,
-                                  chatId,
-                                  fromTokenAddress,
-                                  toTokenAddress,
-                                  slippage
-                                );
-                              }
-                            );
-                          });
-                      }
-                    );
-                  });
-              });
-            });
-        })
-        .catch((error: any) => {
-          console.error("获取用户信息失败:", error);
-          bot.sendMessage(chatId, "获取用户信息失败，请稍后重试。", {
-            reply_markup: {
-              inline_keyboard: [[{ text: "❌ 关闭", callback_data: "close" }]],
-            },
-          });
-        });
-      return;
-    }
-
-    // 处理钱包选择进行代币交换
-    if (data.startsWith("selectswapwallet_")) {
-      const parts = data.split("_");
-      if (parts.length >= 5) {
-        const walletIndex = parseInt(parts[1]);
-        const fromTokenAddress = parts[2];
-        const toTokenAddress = parts[3];
-        const slippage = parseInt(parts[4]);
-
-        const { getUserByID } = require("../utils/database");
-        getUserByID(chatId)
-          .then((user: any) => {
-            if (!user) {
-              bot.sendMessage(chatId, "用户未找到或未登录。");
-              return;
-            }
-
-            // 加载钱包选择回调函数
-            const { selectSwapWalletCallback } = require("../callbacks/tokens");
-
-            // 调用函数处理钱包选择
-            selectSwapWalletCallback(
-              user,
-              bot,
-              chatId,
-              walletIndex,
-              fromTokenAddress,
-              toTokenAddress,
-              slippage
-            );
-          })
-          .catch((error: any) => {
-            console.error("获取用户信息失败:", error);
-            bot.sendMessage(chatId, "获取用户信息失败，请稍后重试。", {
-              reply_markup: {
-                inline_keyboard: [
-                  [{ text: "❌ 关闭", callback_data: "close" }],
-                ],
-              },
-            });
-          });
-        return;
-      }
-    }
-
-    // 处理确认代币交换
-    if (data.startsWith("confirmswap_")) {
-      const parts = data.split("_");
-      if (parts.length >= 6) {
-        const walletIndex = parseInt(parts[1]);
-        const fromTokenAddress = parts[2];
-        const toTokenAddress = parts[3];
-        const amount = parseFloat(parts[4]);
-        const slippage = parseInt(parts[5]);
-
-        const { getUserByID } = require("../utils/database");
-        getUserByID(chatId)
-          .then((user: any) => {
-            if (!user) {
-              bot.sendMessage(chatId, "用户未找到或未登录。");
-              return;
-            }
-
-            // 加载确认交换回调函数
-            const { confirmSwapCallback } = require("../callbacks/tokens");
-
-            // 调用函数执行交换确认
-            confirmSwapCallback(
-              user,
-              bot,
-              chatId,
-              walletIndex,
-              fromTokenAddress,
-              toTokenAddress,
-              amount,
-              slippage
-            );
-          })
-          .catch((error: any) => {
-            console.error("获取用户信息失败:", error);
-            bot.sendMessage(chatId, "获取用户信息失败，请稍后重试。", {
-              reply_markup: {
-                inline_keyboard: [
-                  [{ text: "❌ 关闭", callback_data: "close" }],
-                ],
-              },
-            });
-          });
-        return;
-      }
     }
   });
 }
