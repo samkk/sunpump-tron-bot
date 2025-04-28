@@ -24,7 +24,6 @@ async function sendNewTokenNotification(tokenInfo: {
   name: string;
   symbol: string;
   decimals: number;
-  createdAt: Date;
 }): Promise<void> {
   try {
     if (newTokenSubscribers.length === 0) {
@@ -40,7 +39,7 @@ async function sendNewTokenNotification(tokenInfo: {
 🔤 符号: \`${tokenInfo.symbol}\`
 🔢 精度: \`${tokenInfo.decimals}\`
 👤 创建者: \`${tokenInfo.creator || "未知"}\`
-⏰ 创建时间: \`${tokenInfo.createdAt.toLocaleString()}\`
+⏰ 创建时间: \`${new Date().toLocaleString()}\`
 
 📋 代币地址: \`${tokenInfo.address}\`
 🔗 查看链接: [Tronscan](https://tronscan.org/#/token20/${tokenInfo.address})

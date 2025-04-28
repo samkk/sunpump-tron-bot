@@ -21,6 +21,12 @@ module.exports = {
       autorestart: true,
       cron_restart: "",
       restart_delay: 60 * 1000,
+      log_type: "json",
+      log_rotation: true,
+      max_log_size: "10M",
+      logs_rotated_daily: true,
+      date_suffix: "YYYY-MM-DD",
+      retain_logs: 7,
       env: {
         NODE_ENV: "production",
         NODE_PATH: ".",

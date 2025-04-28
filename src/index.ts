@@ -1,6 +1,7 @@
 import { sendNewTokenNotification, setupBot } from "./bot/bot";
 import logger from "./log";
 import { RedisService } from "./redis/redis";
+import { getTokenInfo } from "./server/queryToken";
 
 // 创建 Redis 服务实例
 const redisService = new RedisService();
@@ -12,7 +13,13 @@ async function setupRedis() {
     async (message) => {
       console.log("收到区块推送:", message);
       const payload = JSON.parse(message);
-      await sendNewTokenNotification(payload);
+      const tokenInfo = await getTokenInfo(payload.tokenAddress);
+      await sendNewTokenNotification({
+        ...payload,
+        name: tokenInfo.name,
+        symbol: tokenInfo.symbol,
+        decimals: tokenInfo.decimals,
+      });
     }
   );
 }
