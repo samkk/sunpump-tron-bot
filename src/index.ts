@@ -13,12 +13,14 @@ async function setupRedis() {
     async (message) => {
       console.log("收到区块推送:", message);
       const payload = JSON.parse(message);
-      const tokenInfo = await getTokenInfo(payload.tokenAddress);
+      const tokenInfo = await getTokenInfo(payload);
+      logger.info("收到区块推送:", tokenInfo);
       await sendNewTokenNotification({
-        ...payload,
         name: tokenInfo.name,
         symbol: tokenInfo.symbol,
         decimals: tokenInfo.decimals,
+        address: tokenInfo.address,
+        creator: tokenInfo.creator,
       });
     }
   );
